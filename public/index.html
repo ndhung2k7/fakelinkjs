@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener - Rút gọn link thông minh</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Particles Background -->
+    <div id="particles-js"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header glass">
+            <div class="logo">
+                <i class="fas fa-link"></i>
+                <h1>URL Shortener <span class="premium-badge">PREMIUM</span></h1>
+            </div>
+            <p class="subtitle">Rút gọn link thông minh với thống kê chi tiết và ảnh minh họa</p>
+            <a href="admin.html" class="admin-link glass">
+                <i class="fas fa-shield-alt"></i>
+                <span>Admin</span>
+            </a>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Glass Card nhập link -->
+            <div class="shortener-card glass premium-card">
+                <div class="card-shine"></div>
+                
+                <form id="shortenForm">
+                    <div class="input-group glass-input">
+                        <i class="fas fa-link input-icon"></i>
+                        <input 
+                            type="url" 
+                            id="longUrl" 
+                            placeholder="https://example.com/duong-dan-rat-dai-can-rut-gon"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="options-grid">
+                        <div class="option-item glass-input">
+                            <i class="fas fa-tag"></i>
+                            <input 
+                                type="text" 
+                                id="customCode" 
+                                placeholder="Tùy chỉnh mã (tùy chọn)"
+                            >
+                        </div>
+                        
+                        <div class="option-item file-upload">
+                            <label for="previewImage" class="file-label">
+                                <i class="fas fa-image"></i>
+                                <span>Chọn ảnh minh họa</span>
+                            </label>
+                            <input 
+                                type="file" 
+                                id="previewImage" 
+                                accept="image/*"
+                                hidden
+                            >
+                        </div>
+                    </div>
+                    
+                    <div id="imagePreview" class="image-preview hidden">
+                        <img src="" alt="Preview">
+                        <button type="button" class="remove-image">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <button type="submit" id="shortenBtn" class="btn-shine">
+                        <i class="fas fa-cut"></i>
+                        <span>Rút gọn link</span>
+                        <div class="btn-ripple"></div>
+                    </button>
+                </form>
+
+                <!-- Loading -->
+                <div id="loading" class="loading hidden">
+                    <div class="spinner-container">
+                        <div class="spinner"></div>
+                        <div class="spinner-glow"></div>
+                    </div>
+                    <span>Đang xử lý...</span>
+                </div>
+
+                <!-- Error message -->
+                <div id="error" class="error-message hidden">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span></span>
+                </div>
+            </div>
+
+            <!-- Kết quả -->
+            <div id="result" class="result-card glass hidden">
+                <div class="result-header">
+                    <div class="success-animation">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3>Link đã được rút gọn thành công!</h3>
+                </div>
+                
+                <div class="url-display premium">
+                    <div class="url-item">
+                        <span class="label">URL gốc:</span>
+                        <p id="originalUrl" class="url-text"></p>
+                    </div>
+                    
+                    <div class="url-item">
+                        <span class="label">URL rút gọn:</span>
+                        <div class="short-url-box">
+                            <a href="#" id="shortUrl" target="_blank"></a>
+                            <button id="copyBtn" class="copy-btn" title="Copy link">
+                                <i class="fas fa-copy"></i>
+                                <span class="tooltip">Copy</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="resultPreview" class="result-preview hidden">
+                        <img src="" alt="Preview">
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="statsBtn" class="stats-btn">
+                        <i class="fas fa-chart-line"></i>
+                        Xem thống kê
+                    </button>
+                    <button id="newLinkBtn" class="new-link-btn">
+                        <i class="fas fa-plus"></i>
+                        Tạo link mới
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thống kê website -->
+            <div class="stats-overview glass">
+                <h3><i class="fas fa-chart-pie"></i> Thống kê website</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <i class="fas fa-link"></i>
+                        <div>
+                            <span class="stat-value" id="totalLinks">0</span>
+                            <span class="stat-label">Tổng links</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-eye"></i>
+                        <div>
+                            <span class="stat-value" id="totalClicks">0</span>
+                            <span class="stat-label">Lượt click</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-users"></i>
+                        <div>
+                            <span class="stat-value" id="uniqueUsers">0</span>
+                            <span class="stat-label">Người dùng</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-chart-bar"></i>
+                        <div>
+                            <span class="stat-value" id="todayClicks">0</span>
+                            <span class="stat-label">Hôm nay</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lịch sử tạo link -->
+            <div class="history-section glass">
+                <div class="history-header">
+                    <h3><i class="fas fa-history"></i> Lịch sử tạo link</h3>
+                    <button id="clearHistoryBtn" class="clear-history">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div id="historyList" class="history-list"></div>
+            </div>
+
+            <!-- Modal thống kê chi tiết -->
+            <div id="statsModal" class="modal">
+                <div class="modal-content glass">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-chart-line"></i> Thống kê chi tiết</h2>
+                        <button class="close-modal">&times;</button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div class="stats-tabs">
+                            <button class="tab-btn active" data-tab="overview">Tổng quan</button>
+                            <button class="tab-btn" data-tab="devices">Thiết bị</button>
+                            <button class="tab-btn" data-tab="daily">Theo ngày</button>
+                        </div>
+                        
+                        <div id="tabOverview" class="tab-content active">
+                            <canvas id="overviewChart"></canvas>
+                        </div>
+                        
+                        <div id="tabDevices" class="tab-content">
+                            <canvas id="devicesChart"></canvas>
+                        </div>
+                        
+                        <div id="tabDaily" class="tab-content">
+                            <canvas id="dailyChart"></canvas>
+                        </div>
+                        
+                        <div class="detailed-stats">
+                            <h4>Chi tiết lượt click</h4>
+                            <div id="clickDetails" class="click-details"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="glass">
+            <p>© 2024 URL Shortener Premium. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification glass hidden">
+        <i class="fas fa-info-circle"></i>
+        <span id="notificationMessage"></span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>
