@@ -683,3 +683,391 @@ setInterval(() => {
         loadUsersData();
     }
 }, 60000);
+// ========== PHẦN THÊM MỚI CHO LOGIN PREMIUM ==========
+
+// DOM Elements cho Login mới
+const loginBtn = document.getElementById('loginBtn');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+const togglePassword = document.getElementById('togglePassword');
+const rememberMe = document.getElementById('rememberMe');
+const loginError = document.getElementById('loginError');
+
+// Toggle Password Visibility với animation
+if (togglePassword) {
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        // Toggle icon với animation
+        const icon = this.querySelector('i');
+        icon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+        
+        // Animation scale
+        this.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+            this.style.transform = 'scale(1)';
+        }, 200);
+        
+        // Focus lại input
+        passwordInput.focus();
+    });
+}
+
+// Auto focus username khi load trang
+if (usernameInput) {
+    usernameInput.focus();
+}
+
+// Remember Me functionality
+function setRememberMe(username) {
+    if (rememberMe && rememberMe.checked) {
+        localStorage.setItem('rememberedUsername', username);
+        // Set thời gian nhớ 7 ngày
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 7);
+        localStorage.setItem('rememberExpiry', expiryDate.toISOString());
+    } else {
+        localStorage.removeItem('rememberedUsername');
+        localStorage.removeItem('rememberExpiry');
+    }
+}
+
+function getRememberedUsername() {
+    const expiry = localStorage.getItem('rememberExpiry');
+    if (expiry) {
+        const expiryDate = new Date(expiry);
+        if (expiryDate > new Date()) {
+            return localStorage.getItem('rememberedUsername');
+        } else {
+            // Hết hạn thì xóa
+            localStorage.removeItem('rememberedUsername');
+            localStorage.removeItem('rememberExpiry');
+        }
+    }
+    return null;
+}
+
+// Load remembered username
+const rememberedUsername = getRememberedUsername();
+if (rememberedUsername && usernameInput) {
+    usernameInput.value = rememberedUsername;
+    if (rememberMe) rememberMe.checked = true;
+    if (passwordInput) passwordInput.focus();
+}
+
+// Xử lý đăng nhập với loading state
+if (loginForm) {
+    // Remove old event listener and add new one
+    loginForm.removeEventListener('submit', loginForm._oldSubmit);
+    
+    async function handleLoginSubmit(e) {
+        e.preventDefault();
+        
+        const username = usernameInput ? usernameInput.value.trim() : '';
+        const password = passwordInput ? passwordInput.value.trim() : '';
+        
+        // Validate với animation
+        if (!username || !password) {
+            showModernLoginError('Vui lòng nhập đầy đủ thông tin');
+            
+            // Shake input trống
+            if (!username && usernameInput) {
+                usernameInput.parentElement.style.animation = 'shake 0.5s ease';
+                setTimeout(() => {
+                    usernameInput.parentElement.style.animation = '';
+                }, 500);
+            }
+            if (!password && passwordInput) {
+                passwordInput.parentElement.style.animation = 'shake 0.5s ease';
+                setTimeout(() => {
+                    passwordInput.parentElement.style.animation = '';
+                }, 500);
+            }
+            return;
+        }
+        
+        // Show loading state
+        if (loginBtn) {
+            loginBtn.classList.add('loading');
+            loginBtn.disabled = true;
+        }
+        
+        if (loginError) loginError.classList.add('hidden');
+        
+        try {
+            const response = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    username, 
+                    password,
+                    rememberMe: rememberMe ? rememberMe.checked : false 
+                }),
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Save remember me
+                setRememberMe(username);
+                
+                // Show success message
+                showModernNotification('Đăng nhập thành công!', 'success');
+                
+                // Hide login container with fade out
+                if (loginContainer) {
+                    loginContainer.style.animation = 'fadeOut 0.5s ease';
+                    setTimeout(() => {
+                        // Show dashboard
+                        showDashboard(data.admin);
+                        loginContainer.style.animation = '';
+                    }, 400);
+                } else {
+                    showDashboard(data.admin);
+                }
+            } else {
+                showModernLoginError(data.error || 'Sai tên đăng nhập hoặc mật khẩu');
+                
+                // Shake login card
+                const loginCard = document.querySelector('.login-card');
+                if (loginCard) {
+                    loginCard.style.animation = 'shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both';
+                    setTimeout(() => {
+                        loginCard.style.animation = '';
+                    }, 600);
+                }
+                
+                // Shake password input
+                if (passwordInput) {
+                    passwordInput.parentElement.style.animation = 'shake 0.5s ease';
+                    setTimeout(() => {
+                        passwordInput.parentElement.style.animation = '';
+                    }, 500);
+                }
+                
+                // Clear password
+                if (passwordInput) passwordInput.value = '';
+                passwordInput?.focus();
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            showModernLoginError('Lỗi kết nối đến server');
+        } finally {
+            // Hide loading state
+            if (loginBtn) {
+                loginBtn.classList.remove('loading');
+                loginBtn.disabled = false;
+            }
+        }
+    }
+    
+    // Store the handler for removal reference
+    loginForm._oldSubmit = handleLoginSubmit;
+    loginForm.addEventListener('submit', handleLoginSubmit);
+}
+
+// Hiển thị lỗi login mới
+function showModernLoginError(message) {
+    if (!loginError) return;
+    
+    const errorSpan = loginError.querySelector('span');
+    if (errorSpan) errorSpan.textContent = message;
+    loginError.classList.remove('hidden');
+    
+    // Auto hide after 5 seconds
+    setTimeout(() => {
+        if (loginError) {
+            loginError.classList.add('hidden');
+        }
+    }, 5000);
+}
+
+// Hiển thị notification mới
+function showModernNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    const notificationMessage = document.getElementById('notificationMessage');
+    
+    if (!notification || !notificationMessage) return;
+    
+    notificationMessage.textContent = message;
+    notification.classList.remove('hidden');
+    
+    // Set màu theo type
+    if (type === 'success') {
+        notification.style.background = 'linear-gradient(135deg, #10b981 0%, #34d399 100%)';
+    } else if (type === 'error') {
+        notification.style.background = 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
+    } else {
+        notification.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    }
+    
+    // Thêm icon tương ứng
+    const icon = notification.querySelector('i');
+    if (icon) {
+        if (type === 'success') icon.className = 'fas fa-check-circle';
+        else if (type === 'error') icon.className = 'fas fa-exclamation-circle';
+        else icon.className = 'fas fa-info-circle';
+    }
+    
+    // Animation slide in
+    notification.style.animation = 'slideInRight 0.3s ease';
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            notification.classList.add('hidden');
+            notification.style.animation = '';
+        }, 300);
+    }, 3000);
+}
+
+// Xử lý Enter key
+if (passwordInput) {
+    passwordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && loginForm) {
+            e.preventDefault();
+            loginForm.dispatchEvent(new Event('submit'));
+        }
+    });
+}
+
+// Xử lý ESC key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        // Clear error message
+        if (loginError) loginError.classList.add('hidden');
+        
+        // Clear loading state
+        if (loginBtn) {
+            loginBtn.classList.remove('loading');
+            loginBtn.disabled = false;
+        }
+    }
+});
+
+// Thêm hiệu ứng cho input khi focus
+document.querySelectorAll('.glass-input-modern input').forEach(input => {
+    input.addEventListener('focus', () => {
+        const parent = input.parentElement;
+        parent.style.transform = 'scale(1.02)';
+        parent.style.transition = 'all 0.3s ease';
+    });
+    
+    input.addEventListener('blur', () => {
+        const parent = input.parentElement;
+        parent.style.transform = 'scale(1)';
+    });
+});
+
+// Thêm hiệuệu cho remember me checkbox
+if (rememberMe) {
+    rememberMe.addEventListener('change', function() {
+        const checkbox = this.querySelector('input[type="checkbox"]');
+        if (checkbox.checked) {
+            checkbox.style.animation = 'pulse 0.5s ease';
+            setTimeout(() => {
+                checkbox.style.animation = '';
+            }, 500);
+        }
+    });
+}
+
+// Thêm animation cho demo credentials
+const demoCredentials = document.querySelector('.demo-credentials');
+if (demoCredentials) {
+    setInterval(() => {
+        demoCredentials.style.transform = 'scale(1.02)';
+        setTimeout(() => {
+            demoCredentials.style.transform = 'scale(1)';
+        }, 200);
+    }, 3000);
+}
+
+// Thêm hiệu ứng typing cho welcome text
+const welcomeText = document.querySelector('.welcome-text h2');
+if (welcomeText) {
+    const text = welcomeText.textContent;
+    welcomeText.textContent = '';
+    let i = 0;
+    
+    function typeWriter() {
+        if (i < text.length) {
+            welcomeText.textContent += text.charAt(i);
+            i++;
+            setTimeout(typeWriter, 100);
+        }
+    }
+    
+    // Chạy hiệu ứng typing khi load
+    setTimeout(typeWriter, 500);
+}
+
+// Kiểm tra và hiển thị thông báo nếu có lỗi từ URL
+const urlParams = new URLSearchParams(window.location.search);
+const errorParam = urlParams.get('error');
+if (errorParam && loginError) {
+    if (errorParam === 'session-expired') {
+        showModernLoginError('Phiên đăng nhập đã hết hạn');
+    } else if (errorParam === 'unauthorized') {
+        showModernLoginError('Vui lòng đăng nhập để tiếp tục');
+    }
+}
+
+// Thêm animation cho background
+const bgImg = document.querySelector('.background-gif img');
+if (bgImg) {
+    // Random vị trí bắt đầu cho zoom effect
+    const randomX = Math.random() * 10 - 5;
+    const randomY = Math.random() * 10 - 5;
+    bgImg.style.transform = `scale(1.1) translate(${randomX}px, ${randomY}px)`;
+}
+
+// Thêm effect parallax nhẹ cho background
+document.addEventListener('mousemove', (e) => {
+    if (!bgImg) return;
+    
+    const mouseX = e.clientX / window.innerWidth - 0.5;
+    const mouseY = e.clientY / window.innerHeight - 0.5;
+    
+    const moveX = mouseX * 20;
+    const moveY = mouseY * 20;
+    
+    bgImg.style.transform = `scale(1.15) translate(${moveX}px, ${moveY}px)`;
+});
+
+// Thêm CSS animations cho notification
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    @keyframes fadeOut {
+        from {
+            opacity: 1;
+            transform: scale(1);
+        }
+        to {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+`;
+document.head.appendChild(style);
+
+// ========== KẾT THÚC PHẦN THÊM MỚI ==========
