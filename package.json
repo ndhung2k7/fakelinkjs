@@ -1,7 +1,7 @@
 {
   "name": "url-shortener-premium",
-  "version": "2.0.0",
-  "description": "URL Shortener cao cấp với Glass UI và thống kê chi tiết",
+  "version": "3.0.0",
+  "description": "URL Shortener cao cấp với hệ thống quản trị",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -17,7 +17,13 @@
     "chart.js": "^4.4.0",
     "axios": "^1.5.0",
     "ua-parser-js": "^1.0.35",
-    "express-rate-limit": "^6.9.0"
+    "express-rate-limit": "^6.9.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cookie-parser": "^1.4.6",
+    "express-session": "^1.17.3",
+    "helmet": "^7.0.0",
+    "compression": "^1.7.4"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
