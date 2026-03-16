@@ -211,20 +211,35 @@ async function writeAdmins(admins) {
 
 // ==================== API PUBLIC ====================
 
-// API: Đăng nhập admin
+// API: Đăng nhập admin (sửa lỗi)
 app.post('/api/admin/login', adminLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
+        
+        // Validate input
+        if (!username || !password) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Vui lòng nhập đầy đủ thông tin' 
+            });
+        }
+        
         const admins = await readAdmins();
         
         const admin = admins.find(a => a.username === username);
         if (!admin) {
-            return res.status(401).json({ success: false, error: 'Sai tên đăng nhập hoặc mật khẩu' });
+            return res.status(401).json({ 
+                success: false, 
+                error: 'Sai tên đăng nhập hoặc mật khẩu' 
+            });
         }
         
         const validPassword = await bcrypt.compare(password, admin.password);
         if (!validPassword) {
-            return res.status(401).json({ success: false, error: 'Sai tên đăng nhập hoặc mật khẩu' });
+            return res.status(401).json({ 
+                success: false, 
+                error: 'Sai tên đăng nhập hoặc mật khẩu' 
+            });
         }
         
         // Cập nhật last login
@@ -235,13 +250,13 @@ app.post('/api/admin/login', adminLimiter, async (req, res) => {
         const token = jwt.sign(
             { username: admin.username, role: admin.role },
             JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: rememberMe ? '7d' : '24h' }
         );
         
         // Set cookie
         res.cookie('adminToken', token, {
             httpOnly: true,
-            maxAge: 24 * 60 * 60 * 1000,
+            maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
             sameSite: 'strict'
         });
         
@@ -257,7 +272,10 @@ app.post('/api/admin/login', adminLimiter, async (req, res) => {
         
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ success: false, error: 'Lỗi server' });
+        res.status(500).json({ 
+            success: false, 
+            error: 'Lỗi server, vui lòng thử lại sau' 
+        });
     }
 });
 
