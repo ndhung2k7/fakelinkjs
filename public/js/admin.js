@@ -1,8 +1,9 @@
+// ========== PHẦN CODE CŨ ==========
+
 // DOM Elements
 const loginContainer = document.getElementById('loginContainer');
 const dashboardContainer = document.getElementById('dashboardContainer');
 const loginForm = document.getElementById('loginForm');
-const loginError = document.getElementById('loginError');
 const logoutBtn = document.getElementById('logoutBtn');
 const notification = document.getElementById('notification');
 const notificationMessage = document.getElementById('notificationMessage');
@@ -19,44 +20,6 @@ let currentPage = 'dashboard';
 let linksData = [];
 let currentPageNum = 1;
 const itemsPerPage = 10;
-
-// Khởi tạo Particles.js
-if (typeof particlesJS !== 'undefined') {
-    particlesJS('particles-js', {
-        particles: {
-            number: { value: 80, density: { enable: true, value_area: 800 } },
-            color: { value: '#ffffff' },
-            shape: { type: 'circle' },
-            opacity: { value: 0.5, random: true },
-            size: { value: 3, random: true },
-            line_linked: {
-                enable: true,
-                distance: 150,
-                color: '#ffffff',
-                opacity: 0.4,
-                width: 1
-            },
-            move: {
-                enable: true,
-                speed: 3,
-                direction: 'none',
-                random: true,
-                straight: false,
-                out_mode: 'out',
-                bounce: false
-            }
-        },
-        interactivity: {
-            detect_on: 'canvas',
-            events: {
-                onhover: { enable: true, mode: 'repulse' },
-                onclick: { enable: true, mode: 'push' },
-                resize: true
-            }
-        },
-        retina_detect: true
-    });
-}
 
 // Kiểm tra đăng nhập khi load trang
 document.addEventListener('DOMContentLoaded', () => {
@@ -98,74 +61,42 @@ async function checkLoginStatus() {
     }
 }
 
-// Xử lý đăng nhập
-loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    
-    // Validate
-    if (!username || !password) {
-        loginError.textContent = 'Vui lòng nhập đầy đủ thông tin';
-        loginError.classList.remove('hidden');
-        return;
-    }
-    
-    try {
-        const response = await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
-            credentials: 'include'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showDashboard(data.admin);
-            showNotification('Đăng nhập thành công!');
-        } else {
-            loginError.textContent = data.error || 'Sai tên đăng nhập hoặc mật khẩu';
-            loginError.classList.remove('hidden');
-        }
-    } catch (error) {
-        loginError.textContent = 'Lỗi kết nối đến server';
-        loginError.classList.remove('hidden');
-    }
-});
-
 // Hiển thị dashboard
 function showDashboard(admin) {
-    loginContainer.classList.add('hidden');
-    dashboardContainer.classList.remove('hidden');
+    if (loginContainer) loginContainer.classList.add('hidden');
+    if (dashboardContainer) dashboardContainer.classList.remove('hidden');
     
-    document.getElementById('adminUsername').textContent = admin.username;
-    document.getElementById('adminRole').textContent = 
-        admin.role === 'superadmin' ? 'Super Admin' : 'Admin';
+    const adminUsername = document.getElementById('adminUsername');
+    const adminRole = document.getElementById('adminRole');
+    
+    if (adminUsername) adminUsername.textContent = admin.username;
+    if (adminRole) {
+        adminRole.textContent = admin.role === 'superadmin' ? 'Super Admin' : 'Admin';
+    }
     
     // Load dữ liệu dashboard
     loadDashboardData();
 }
 
 // Xử lý đăng xuất
-logoutBtn.addEventListener('click', async () => {
-    try {
-        await fetch('/api/admin/logout', {
-            method: 'POST',
-            credentials: 'include'
-        });
-        
-        dashboardContainer.classList.add('hidden');
-        loginContainer.classList.remove('hidden');
-        loginForm.reset();
-        loginError.classList.add('hidden');
-        
-        showNotification('Đã đăng xuất');
-    } catch (error) {
-        showNotification('Lỗi đăng xuất', true);
-    }
-});
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+        try {
+            await fetch('/api/admin/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
+            
+            if (dashboardContainer) dashboardContainer.classList.add('hidden');
+            if (loginContainer) loginContainer.classList.remove('hidden');
+            if (loginForm) loginForm.reset();
+            
+            showNotification('Đã đăng xuất');
+        } catch (error) {
+            showNotification('Lỗi đăng xuất', true);
+        }
+    });
+}
 
 // Navigation
 document.querySelectorAll('.nav-item').forEach(item => {
@@ -175,7 +106,6 @@ document.querySelectorAll('.nav-item').forEach(item => {
         const page = item.dataset.page;
         switchPage(page);
         
-        // Update active state
         document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
         item.classList.add('active');
     });
@@ -185,9 +115,9 @@ function switchPage(page) {
     currentPage = page;
     
     document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
-    document.getElementById(`${page}Page`).classList.add('active');
+    const pageElement = document.getElementById(`${page}Page`);
+    if (pageElement) pageElement.classList.add('active');
     
-    // Load dữ liệu cho trang
     switch(page) {
         case 'dashboard':
             loadDashboardData();
@@ -213,21 +143,23 @@ async function loadDashboardData() {
             updateDashboardStats(data.stats);
             renderCharts(data.stats);
             renderTopLinks(data.stats.topLinks);
-        } else {
-            showNotification('Không thể tải dữ liệu dashboard', true);
         }
     } catch (error) {
         console.error('Error loading dashboard:', error);
-        showNotification('Lỗi tải dữ liệu dashboard', true);
     }
 }
 
 // Cập nhật thống kê
 function updateDashboardStats(stats) {
-    document.getElementById('totalLinks').textContent = stats.totalLinks || 0;
-    document.getElementById('totalClicks').textContent = (stats.totalClicks || 0).toLocaleString();
-    document.getElementById('uniqueVisitors').textContent = (stats.uniqueVisitors || 0).toLocaleString();
-    document.getElementById('todayClicks').textContent = (stats.todayClicks || 0).toLocaleString();
+    const totalLinks = document.getElementById('totalLinks');
+    const totalClicks = document.getElementById('totalClicks');
+    const uniqueVisitors = document.getElementById('uniqueVisitors');
+    const todayClicks = document.getElementById('todayClicks');
+    
+    if (totalLinks) totalLinks.textContent = stats.totalLinks || 0;
+    if (totalClicks) totalClicks.textContent = (stats.totalClicks || 0).toLocaleString();
+    if (uniqueVisitors) uniqueVisitors.textContent = (stats.uniqueVisitors || 0).toLocaleString();
+    if (todayClicks) todayClicks.textContent = (stats.todayClicks || 0).toLocaleString();
 }
 
 // Render charts
@@ -260,18 +192,10 @@ function renderCharts(stats) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
-                    x: { 
-                        ticks: { color: '#94a3b8' },
-                        grid: { color: 'rgba(255,255,255,0.1)' }
-                    },
-                    y: { 
-                        ticks: { color: '#94a3b8' },
-                        grid: { color: 'rgba(255,255,255,0.1)' }
-                    }
+                    x: { ticks: { color: '#94a3b8' } },
+                    y: { ticks: { color: '#94a3b8' } }
                 }
             }
         });
@@ -295,18 +219,10 @@ function renderCharts(stats) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
-                    x: { 
-                        ticks: { color: '#94a3b8' },
-                        grid: { color: 'rgba(255,255,255,0.1)' }
-                    },
-                    y: { 
-                        ticks: { color: '#94a3b8' },
-                        grid: { color: 'rgba(255,255,255,0.1)' }
-                    }
+                    x: { ticks: { color: '#94a3b8' } },
+                    y: { ticks: { color: '#94a3b8' } }
                 }
             }
         });
@@ -330,9 +246,7 @@ function renderCharts(stats) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { 
-                        labels: { color: '#94a3b8' } 
-                    }
+                    legend: { labels: { color: '#94a3b8' } }
                 }
             }
         });
@@ -356,9 +270,7 @@ function renderCharts(stats) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { 
-                        labels: { color: '#94a3b8' } 
-                    }
+                    legend: { labels: { color: '#94a3b8' } }
                 }
             }
         });
@@ -368,6 +280,7 @@ function renderCharts(stats) {
 // Render top links
 function renderTopLinks(links) {
     const tbody = document.getElementById('topLinksBody');
+    if (!tbody) return;
     
     if (!links || links.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center">Chưa có dữ liệu</td></tr>';
@@ -403,18 +316,17 @@ async function loadLinksData() {
         if (data.success) {
             linksData = data.links;
             renderLinksTable();
-        } else {
-            showNotification('Không thể tải dữ liệu links', true);
         }
     } catch (error) {
         console.error('Error loading links:', error);
-        showNotification('Lỗi tải dữ liệu links', true);
     }
 }
 
 // Render links table
 function renderLinksTable(filteredData = null) {
     const tbody = document.getElementById('linksBody');
+    if (!tbody) return;
+    
     const data = filteredData || linksData;
     const start = (currentPageNum - 1) * itemsPerPage;
     const end = start + itemsPerPage;
@@ -444,42 +356,53 @@ function renderLinksTable(filteredData = null) {
         </tr>
     `).join('');
     
-    // Update pagination
     const totalPages = Math.ceil(data.length / itemsPerPage);
-    document.getElementById('pageInfo').textContent = `${currentPageNum} / ${totalPages || 1}`;
+    const pageInfo = document.getElementById('pageInfo');
+    if (pageInfo) pageInfo.textContent = `${currentPageNum} / ${totalPages || 1}`;
     
-    // Update button states
-    document.getElementById('prevPage').disabled = currentPageNum === 1;
-    document.getElementById('nextPage').disabled = currentPageNum === totalPages || totalPages === 0;
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    if (prevBtn) prevBtn.disabled = currentPageNum === 1;
+    if (nextBtn) nextBtn.disabled = currentPageNum === totalPages || totalPages === 0;
 }
 
 // Search links
-document.getElementById('searchLinks')?.addEventListener('input', (e) => {
-    const search = e.target.value.toLowerCase();
-    const filtered = linksData.filter(link => 
-        link.code.toLowerCase().includes(search) ||
-        link.longUrl.toLowerCase().includes(search)
-    );
-    
-    currentPageNum = 1;
-    renderLinksTable(filtered);
-});
+const searchLinks = document.getElementById('searchLinks');
+if (searchLinks) {
+    searchLinks.addEventListener('input', (e) => {
+        const search = e.target.value.toLowerCase();
+        const filtered = linksData.filter(link => 
+            link.code.toLowerCase().includes(search) ||
+            link.longUrl.toLowerCase().includes(search)
+        );
+        
+        currentPageNum = 1;
+        renderLinksTable(filtered);
+    });
+}
 
 // Pagination
-document.getElementById('prevPage')?.addEventListener('click', () => {
-    if (currentPageNum > 1) {
-        currentPageNum--;
-        renderLinksTable();
-    }
-});
+const prevPage = document.getElementById('prevPage');
+const nextPage = document.getElementById('nextPage');
 
-document.getElementById('nextPage')?.addEventListener('click', () => {
-    const totalPages = Math.ceil(linksData.length / itemsPerPage);
-    if (currentPageNum < totalPages) {
-        currentPageNum++;
-        renderLinksTable();
-    }
-});
+if (prevPage) {
+    prevPage.addEventListener('click', () => {
+        if (currentPageNum > 1) {
+            currentPageNum--;
+            renderLinksTable();
+        }
+    });
+}
+
+if (nextPage) {
+    nextPage.addEventListener('click', () => {
+        const totalPages = Math.ceil(linksData.length / itemsPerPage);
+        if (currentPageNum < totalPages) {
+            currentPageNum++;
+            renderLinksTable();
+        }
+    });
+}
 
 // Delete link
 window.deleteLink = async (code) => {
@@ -508,7 +431,6 @@ window.deleteLink = async (code) => {
 
 // View link stats
 window.viewLinkStats = (code) => {
-    // Mở modal thống kê chi tiết
     showNotification('Tính năng đang phát triển');
 };
 
@@ -522,18 +444,16 @@ async function loadUsersData() {
         
         if (data.success) {
             renderUsersGrid(data.users);
-        } else {
-            showNotification('Không thể tải dữ liệu users', true);
         }
     } catch (error) {
         console.error('Error loading users:', error);
-        showNotification('Lỗi tải dữ liệu users', true);
     }
 }
 
 // Render users grid
 function renderUsersGrid(users) {
     const grid = document.getElementById('usersGrid');
+    if (!grid) return;
     
     if (!users || users.length === 0) {
         grid.innerHTML = '<p class="text-center">Chưa có tài khoản admin</p>';
@@ -587,93 +507,110 @@ window.deleteUser = async (username) => {
 };
 
 // Add Admin Modal
-addAdminBtn?.addEventListener('click', () => {
-    addAdminModal.classList.add('active');
-});
+if (addAdminBtn) {
+    addAdminBtn.addEventListener('click', () => {
+        if (addAdminModal) addAdminModal.classList.add('active');
+    });
+}
 
-closeModal?.addEventListener('click', () => {
-    addAdminModal.classList.remove('active');
-});
+if (closeModal) {
+    closeModal.addEventListener('click', () => {
+        if (addAdminModal) addAdminModal.classList.remove('active');
+    });
+}
 
 window.addEventListener('click', (e) => {
     if (e.target === addAdminModal) {
-        addAdminModal.classList.remove('active');
+        if (addAdminModal) addAdminModal.classList.remove('active');
     }
 });
 
 // Add Admin Form
-addAdminForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const newAdmin = {
-        username: document.getElementById('newUsername').value,
-        email: document.getElementById('newEmail').value,
-        password: document.getElementById('newPassword').value,
-        role: document.getElementById('newRole').value
-    };
-    
-    // Validate
-    if (newAdmin.password.length < 6) {
-        showNotification('Mật khẩu phải có ít nhất 6 ký tự', true);
-        return;
-    }
-    
-    try {
-        const response = await fetch('/api/admin/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newAdmin),
-            credentials: 'include'
-        });
+if (addAdminForm) {
+    addAdminForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
         
-        const data = await response.json();
+        const newAdmin = {
+            username: document.getElementById('newUsername').value,
+            email: document.getElementById('newEmail').value,
+            password: document.getElementById('newPassword').value,
+            role: document.getElementById('newRole').value
+        };
         
-        if (data.success) {
-            showNotification('Thêm admin thành công');
-            addAdminModal.classList.remove('active');
-            addAdminForm.reset();
-            loadUsersData();
-        } else {
-            showNotification(data.error || 'Không thể thêm admin', true);
+        if (newAdmin.password.length < 6) {
+            showNotification('Mật khẩu phải có ít nhất 6 ký tự', true);
+            return;
         }
-    } catch (error) {
-        console.error('Error adding admin:', error);
-        showNotification('Lỗi thêm admin', true);
-    }
-});
+        
+        try {
+            const response = await fetch('/api/admin/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newAdmin),
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showNotification('Thêm admin thành công');
+                if (addAdminModal) addAdminModal.classList.remove('active');
+                addAdminForm.reset();
+                loadUsersData();
+            } else {
+                showNotification(data.error || 'Không thể thêm admin', true);
+            }
+        } catch (error) {
+            console.error('Error adding admin:', error);
+            showNotification('Lỗi thêm admin', true);
+        }
+    });
+}
 
 // Export links
-document.getElementById('exportLinks')?.addEventListener('click', () => {
-    const dataStr = JSON.stringify(linksData, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `links-export-${new Date().toISOString().split('T')[0]}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-    
-    showNotification('Xuất dữ liệu thành công');
-});
+const exportLinks = document.getElementById('exportLinks');
+if (exportLinks) {
+    exportLinks.addEventListener('click', () => {
+        const dataStr = JSON.stringify(linksData, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        
+        const exportFileDefaultName = `links-export-${new Date().toISOString().split('T')[0]}.json`;
+        
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+        
+        showNotification('Xuất dữ liệu thành công');
+    });
+}
 
 // Date range change
-document.getElementById('dateRange')?.addEventListener('change', () => {
-    loadDashboardData();
-});
+const dateRange = document.getElementById('dateRange');
+if (dateRange) {
+    dateRange.addEventListener('change', () => {
+        loadDashboardData();
+    });
+}
 
 // Settings forms
-document.getElementById('generalSettings')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    showNotification('Đã lưu cài đặt chung');
-});
+const generalSettings = document.getElementById('generalSettings');
+if (generalSettings) {
+    generalSettings.addEventListener('submit', (e) => {
+        e.preventDefault();
+        showNotification('Đã lưu cài đặt chung');
+    });
+}
 
-document.getElementById('securitySettings')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    showNotification('Đã lưu cài đặt bảo mật');
-});
+const securitySettings = document.getElementById('securitySettings');
+if (securitySettings) {
+    securitySettings.addEventListener('submit', (e) => {
+        e.preventDefault();
+        showNotification('Đã lưu cài đặt bảo mật');
+    });
+}
 
-// Auto refresh data every 60 seconds
+// Auto refresh
 setInterval(() => {
     if (currentPage === 'dashboard') {
         loadDashboardData();
@@ -683,6 +620,7 @@ setInterval(() => {
         loadUsersData();
     }
 }, 60000);
+
 // ========== PHẦN THÊM MỚI CHO LOGIN PREMIUM ==========
 
 // DOM Elements cho Login mới
@@ -694,7 +632,7 @@ const rememberMe = document.getElementById('rememberMe');
 const loginError = document.getElementById('loginError');
 
 // Toggle Password Visibility với animation
-if (togglePassword) {
+if (togglePassword && passwordInput) {
     togglePassword.addEventListener('click', function() {
         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordInput.setAttribute('type', type);
@@ -723,7 +661,6 @@ if (usernameInput) {
 function setRememberMe(username) {
     if (rememberMe && rememberMe.checked) {
         localStorage.setItem('rememberedUsername', username);
-        // Set thời gian nhớ 7 ngày
         const expiryDate = new Date();
         expiryDate.setDate(expiryDate.getDate() + 7);
         localStorage.setItem('rememberExpiry', expiryDate.toISOString());
@@ -740,7 +677,6 @@ function getRememberedUsername() {
         if (expiryDate > new Date()) {
             return localStorage.getItem('rememberedUsername');
         } else {
-            // Hết hạn thì xóa
             localStorage.removeItem('rememberedUsername');
             localStorage.removeItem('rememberExpiry');
         }
@@ -758,10 +694,7 @@ if (rememberedUsername && usernameInput) {
 
 // Xử lý đăng nhập với loading state
 if (loginForm) {
-    // Remove old event listener and add new one
-    loginForm.removeEventListener('submit', loginForm._oldSubmit);
-    
-    async function handleLoginSubmit(e) {
+    loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const username = usernameInput ? usernameInput.value.trim() : '';
@@ -769,7 +702,11 @@ if (loginForm) {
         
         // Validate với animation
         if (!username || !password) {
-            showModernLoginError('Vui lòng nhập đầy đủ thông tin');
+            if (loginError) {
+                const errorSpan = loginError.querySelector('span');
+                if (errorSpan) errorSpan.textContent = 'Vui lòng nhập đầy đủ thông tin';
+                loginError.classList.remove('hidden');
+            }
             
             // Shake input trống
             if (!username && usernameInput) {
@@ -796,6 +733,8 @@ if (loginForm) {
         if (loginError) loginError.classList.add('hidden');
         
         try {
+            console.log('Sending login request for:', username);
+            
             const response = await fetch('/api/admin/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -808,13 +747,14 @@ if (loginForm) {
             });
             
             const data = await response.json();
+            console.log('Login response:', data);
             
             if (data.success) {
                 // Save remember me
                 setRememberMe(username);
                 
                 // Show success message
-                showModernNotification('Đăng nhập thành công!', 'success');
+                showNotification('Đăng nhập thành công!', false);
                 
                 // Hide login container with fade out
                 if (loginContainer) {
@@ -828,7 +768,11 @@ if (loginForm) {
                     showDashboard(data.admin);
                 }
             } else {
-                showModernLoginError(data.error || 'Sai tên đăng nhập hoặc mật khẩu');
+                if (loginError) {
+                    const errorSpan = loginError.querySelector('span');
+                    if (errorSpan) errorSpan.textContent = data.error || 'Sai tên đăng nhập hoặc mật khẩu';
+                    loginError.classList.remove('hidden');
+                }
                 
                 // Shake login card
                 const loginCard = document.querySelector('.login-card');
@@ -849,11 +793,15 @@ if (loginForm) {
                 
                 // Clear password
                 if (passwordInput) passwordInput.value = '';
-                passwordInput?.focus();
+                if (passwordInput) passwordInput.focus();
             }
         } catch (error) {
             console.error('Login error:', error);
-            showModernLoginError('Lỗi kết nối đến server');
+            if (loginError) {
+                const errorSpan = loginError.querySelector('span');
+                if (errorSpan) errorSpan.textContent = 'Lỗi kết nối đến server';
+                loginError.classList.remove('hidden');
+            }
         } finally {
             // Hide loading state
             if (loginBtn) {
@@ -861,66 +809,7 @@ if (loginForm) {
                 loginBtn.disabled = false;
             }
         }
-    }
-    
-    // Store the handler for removal reference
-    loginForm._oldSubmit = handleLoginSubmit;
-    loginForm.addEventListener('submit', handleLoginSubmit);
-}
-
-// Hiển thị lỗi login mới
-function showModernLoginError(message) {
-    if (!loginError) return;
-    
-    const errorSpan = loginError.querySelector('span');
-    if (errorSpan) errorSpan.textContent = message;
-    loginError.classList.remove('hidden');
-    
-    // Auto hide after 5 seconds
-    setTimeout(() => {
-        if (loginError) {
-            loginError.classList.add('hidden');
-        }
-    }, 5000);
-}
-
-// Hiển thị notification mới
-function showModernNotification(message, type = 'info') {
-    const notification = document.getElementById('notification');
-    const notificationMessage = document.getElementById('notificationMessage');
-    
-    if (!notification || !notificationMessage) return;
-    
-    notificationMessage.textContent = message;
-    notification.classList.remove('hidden');
-    
-    // Set màu theo type
-    if (type === 'success') {
-        notification.style.background = 'linear-gradient(135deg, #10b981 0%, #34d399 100%)';
-    } else if (type === 'error') {
-        notification.style.background = 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)';
-    } else {
-        notification.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-    }
-    
-    // Thêm icon tương ứng
-    const icon = notification.querySelector('i');
-    if (icon) {
-        if (type === 'success') icon.className = 'fas fa-check-circle';
-        else if (type === 'error') icon.className = 'fas fa-exclamation-circle';
-        else icon.className = 'fas fa-info-circle';
-    }
-    
-    // Animation slide in
-    notification.style.animation = 'slideInRight 0.3s ease';
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => {
-            notification.classList.add('hidden');
-            notification.style.animation = '';
-        }, 300);
-    }, 3000);
+    });
 }
 
 // Xử lý Enter key
@@ -936,10 +825,7 @@ if (passwordInput) {
 // Xử lý ESC key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        // Clear error message
         if (loginError) loginError.classList.add('hidden');
-        
-        // Clear loading state
         if (loginBtn) {
             loginBtn.classList.remove('loading');
             loginBtn.disabled = false;
@@ -951,21 +837,25 @@ document.addEventListener('keydown', (e) => {
 document.querySelectorAll('.glass-input-modern input').forEach(input => {
     input.addEventListener('focus', () => {
         const parent = input.parentElement;
-        parent.style.transform = 'scale(1.02)';
-        parent.style.transition = 'all 0.3s ease';
+        if (parent) {
+            parent.style.transform = 'scale(1.02)';
+            parent.style.transition = 'all 0.3s ease';
+        }
     });
     
     input.addEventListener('blur', () => {
         const parent = input.parentElement;
-        parent.style.transform = 'scale(1)';
+        if (parent) {
+            parent.style.transform = 'scale(1)';
+        }
     });
 });
 
-// Thêm hiệuệu cho remember me checkbox
+// Thêm hiệu ứng cho remember me checkbox
 if (rememberMe) {
     rememberMe.addEventListener('change', function() {
         const checkbox = this.querySelector('input[type="checkbox"]');
-        if (checkbox.checked) {
+        if (checkbox && checkbox.checked) {
             checkbox.style.animation = 'pulse 0.5s ease';
             setTimeout(() => {
                 checkbox.style.animation = '';
@@ -1000,7 +890,6 @@ if (welcomeText) {
         }
     }
     
-    // Chạy hiệu ứng typing khi load
     setTimeout(typeWriter, 500);
 }
 
@@ -1008,17 +897,19 @@ if (welcomeText) {
 const urlParams = new URLSearchParams(window.location.search);
 const errorParam = urlParams.get('error');
 if (errorParam && loginError) {
+    const errorSpan = loginError.querySelector('span');
     if (errorParam === 'session-expired') {
-        showModernLoginError('Phiên đăng nhập đã hết hạn');
+        if (errorSpan) errorSpan.textContent = 'Phiên đăng nhập đã hết hạn';
+        loginError.classList.remove('hidden');
     } else if (errorParam === 'unauthorized') {
-        showModernLoginError('Vui lòng đăng nhập để tiếp tục');
+        if (errorSpan) errorSpan.textContent = 'Vui lòng đăng nhập để tiếp tục';
+        loginError.classList.remove('hidden');
     }
 }
 
 // Thêm animation cho background
 const bgImg = document.querySelector('.background-gif img');
 if (bgImg) {
-    // Random vị trí bắt đầu cho zoom effect
     const randomX = Math.random() * 10 - 5;
     const randomY = Math.random() * 10 - 5;
     bgImg.style.transform = `scale(1.1) translate(${randomX}px, ${randomY}px)`;
@@ -1069,5 +960,3 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-
-// ========== KẾT THÚC PHẦN THÊM MỚI ==========
