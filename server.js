@@ -17,9 +17,9 @@ const compression = require('compression');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const BASE_URL = `http://localhost:${PORT}`;
-const JWT_SECRET = 'your-secret-key-change-in-production';
-const SESSION_SECRET = 'your-session-secret-change-in-production';
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'your-session-secret-change-in-production';
 
 // Security middleware
 app.use(helmet({
@@ -31,7 +31,10 @@ app.use(session({
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 hours
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000
+    }
 }));
 
 // Rate limiting
@@ -95,55 +98,62 @@ const adminFile = path.join(dataDir, 'admin.json');
 
 // Khởi tạo dữ liệu
 async function initializeDataFiles() {
-    // Tạo thư mục data
     try {
-        await fs.access(dataDir);
-    } catch {
-        await fs.mkdir(dataDir);
-    }
-    
-    // Tạo thư mục uploads
-    try {
-        await fs.access(uploadsDir);
-    } catch {
-        await fs.mkdir(uploadsDir);
-    }
-    
-    // Tạo file urls.json
-    try {
-        await fs.access(urlsFile);
-    } catch {
-        await fs.writeFile(urlsFile, JSON.stringify({}));
-    }
-    
-    // Tạo file stats.json
-    try {
-        await fs.access(statsFile);
-    } catch {
-        await fs.writeFile(statsFile, JSON.stringify({}));
-    }
-    
-    // Tạo file history.json
-    try {
-        await fs.access(historyFile);
-    } catch {
-        await fs.writeFile(historyFile, JSON.stringify([]));
-    }
-    
-    // Tạo file admin.json với tài khoản mặc định
-    try {
-        await fs.access(adminFile);
-    } catch {
-        const hashedPassword = await bcrypt.hash('admin123', 10);
-        const defaultAdmin = {
-            username: 'admin',
-            password: hashedPassword,
-            email: 'admin@example.com',
-            role: 'superadmin',
-            createdAt: new Date().toISOString(),
-            lastLogin: null
-        };
-        await fs.writeFile(adminFile, JSON.stringify([defaultAdmin], null, 2));
+        // Tạo thư mục data
+        try {
+            await fs.access(dataDir);
+        } catch {
+            await fs.mkdir(dataDir);
+        }
+        
+        // Tạo thư mục uploads
+        try {
+            await fs.access(uploadsDir);
+        } catch {
+            await fs.mkdir(uploadsDir);
+        }
+        
+        // Tạo file urls.json
+        try {
+            await fs.access(urlsFile);
+        } catch {
+            await fs.writeFile(urlsFile, JSON.stringify({}));
+        }
+        
+        // Tạo file stats.json
+        try {
+            await fs.access(statsFile);
+        } catch {
+            await fs.writeFile(statsFile, JSON.stringify({}));
+        }
+        
+        // Tạo file history.json
+        try {
+            await fs.access(historyFile);
+        } catch {
+            await fs.writeFile(historyFile, JSON.stringify([]));
+        }
+        
+        // Tạo file admin.json với tài khoản mặc định
+        try {
+            await fs.access(adminFile);
+        } catch {
+            const hashedPassword = await bcrypt.hash('admin123', 10);
+            const defaultAdmin = {
+                username: 'admin',
+                password: hashedPassword,
+                email: 'admin@example.com',
+                role: 'superadmin',
+                createdAt: new Date().toISOString(),
+                lastLogin: null
+            };
+            await fs.writeFile(adminFile, JSON.stringify([defaultAdmin], null, 2));
+            console.log('✅ Đã tạo tài khoản admin mặc định: admin / admin123');
+        }
+        
+        console.log('✅ Đã khởi tạo dữ liệu thành công');
+    } catch (error) {
+        console.error('❌ Lỗi khởi tạo dữ liệu:', error);
     }
 }
 
@@ -173,23 +183,39 @@ const requireAdmin = async (req, res, next) => {
 
 // Đọc dữ liệu
 async function readUrls() {
-    const data = await fs.readFile(urlsFile, 'utf8');
-    return JSON.parse(data);
+    try {
+        const data = await fs.readFile(urlsFile, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        return {};
+    }
 }
 
 async function readStats() {
-    const data = await fs.readFile(statsFile, 'utf8');
-    return JSON.parse(data);
+    try {
+        const data = await fs.readFile(statsFile, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        return {};
+    }
 }
 
 async function readHistory() {
-    const data = await fs.readFile(historyFile, 'utf8');
-    return JSON.parse(data);
+    try {
+        const data = await fs.readFile(historyFile, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        return [];
+    }
 }
 
 async function readAdmins() {
-    const data = await fs.readFile(adminFile, 'utf8');
-    return JSON.parse(data);
+    try {
+        const data = await fs.readFile(adminFile, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        return [];
+    }
 }
 
 // Ghi dữ liệu
@@ -211,10 +237,12 @@ async function writeAdmins(admins) {
 
 // ==================== API PUBLIC ====================
 
-// API: Đăng nhập admin (sửa lỗi)
+// API: Đăng nhập admin (ĐÃ SỬA LỖI)
 app.post('/api/admin/login', adminLimiter, async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, rememberMe } = req.body;
+        
+        console.log('Login attempt:', username);
         
         // Validate input
         if (!username || !password) {
@@ -226,8 +254,17 @@ app.post('/api/admin/login', adminLimiter, async (req, res) => {
         
         const admins = await readAdmins();
         
+        if (!admins || admins.length === 0) {
+            console.error('No admin accounts found');
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Lỗi hệ thống' 
+            });
+        }
+        
         const admin = admins.find(a => a.username === username);
         if (!admin) {
+            console.log('User not found:', username);
             return res.status(401).json({ 
                 success: false, 
                 error: 'Sai tên đăng nhập hoặc mật khẩu' 
@@ -236,6 +273,7 @@ app.post('/api/admin/login', adminLimiter, async (req, res) => {
         
         const validPassword = await bcrypt.compare(password, admin.password);
         if (!validPassword) {
+            console.log('Invalid password for:', username);
             return res.status(401).json({ 
                 success: false, 
                 error: 'Sai tên đăng nhập hoặc mật khẩu' 
@@ -257,8 +295,11 @@ app.post('/api/admin/login', adminLimiter, async (req, res) => {
         res.cookie('adminToken', token, {
             httpOnly: true,
             maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
-            sameSite: 'strict'
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production'
         });
+        
+        console.log('Login successful:', username);
         
         res.json({
             success: true,
@@ -286,15 +327,33 @@ app.post('/api/admin/logout', (req, res) => {
 });
 
 // API: Kiểm tra trạng thái đăng nhập
-app.get('/api/admin/check', requireAdmin, (req, res) => {
-    res.json({
-        success: true,
-        admin: {
-            username: req.admin.username,
-            role: req.admin.role,
-            email: req.admin.email
+app.get('/api/admin/check', async (req, res) => {
+    const token = req.cookies.adminToken;
+    
+    if (!token) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const admins = await readAdmins();
+        const admin = admins.find(a => a.username === decoded.username);
+        
+        if (!admin) {
+            return res.status(401).json({ success: false, error: 'User not found' });
         }
-    });
+        
+        res.json({
+            success: true,
+            admin: {
+                username: admin.username,
+                role: admin.role,
+                email: admin.email
+            }
+        });
+    } catch (error) {
+        res.status(401).json({ success: false, error: 'Invalid token' });
+    }
 });
 
 // ==================== API ADMIN ====================
@@ -316,29 +375,24 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
         Object.values(stats).forEach(linkStats => {
             totalClicks += linkStats.clicks?.length || 0;
             
-            // Thống kê thiết bị
             Object.entries(linkStats.devices || {}).forEach(([device, count]) => {
                 totalDevices[device] = (totalDevices[device] || 0) + count;
             });
             
-            // Thống kê trình duyệt
             Object.entries(linkStats.browsers || {}).forEach(([browser, count]) => {
                 totalBrowsers[browser] = (totalBrowsers[browser] || 0) + count;
             });
             
-            // Thống kê theo ngày
             Object.entries(linkStats.daily || {}).forEach(([day, count]) => {
                 clicksByDay[day] = (clicksByDay[day] || 0) + count;
             });
             
-            // Thống kê theo giờ
             linkStats.clicks?.forEach(click => {
                 const hour = new Date(click.timestamp).getHours();
                 clicksByHour[hour]++;
             });
         });
         
-        // Top links
         const topLinks = Object.entries(urls)
             .map(([code, data]) => ({
                 code,
@@ -351,30 +405,18 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
             .sort((a, b) => b.clicks - a.clicks)
             .slice(0, 10);
         
-        // Recent links
-        const recentLinks = Object.entries(urls)
-            .map(([code, data]) => ({
-                code,
-                ...data,
-                shortUrl: `${BASE_URL}/${code}`
-            }))
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .slice(0, 10);
-        
         res.json({
             success: true,
             stats: {
                 totalLinks: Object.keys(urls).length,
                 totalClicks,
-                uniqueVisitors: totalClicks, // Tạm thời
+                uniqueVisitors: totalClicks,
                 todayClicks: clicksByDay[new Date().toISOString().split('T')[0]] || 0,
-                averageClicksPerLink: totalClicks / (Object.keys(urls).length || 1),
                 devices: totalDevices,
                 browsers: totalBrowsers,
                 clicksByDay,
                 clicksByHour,
-                topLinks,
-                recentLinks
+                topLinks
             }
         });
         
@@ -397,11 +439,7 @@ app.get('/api/admin/links', requireAdmin, async (req, res) => {
             stats: stats[code] || { clicks: [] }
         }));
         
-        res.json({
-            success: true,
-            links
-        });
-        
+        res.json({ success: true, links });
     } catch (error) {
         res.status(500).json({ success: false, error: 'Lỗi server' });
     }
@@ -419,13 +457,8 @@ app.delete('/api/admin/links/:code', requireAdmin, async (req, res) => {
             return res.status(404).json({ success: false, error: 'Không tìm thấy link' });
         }
         
-        // Xóa khỏi urls
         delete urls[code];
-        
-        // Xóa khỏi stats
         delete stats[code];
-        
-        // Xóa khỏi history
         history = history.filter(item => item.shortCode !== code);
         
         await writeUrls(urls);
@@ -433,7 +466,6 @@ app.delete('/api/admin/links/:code', requireAdmin, async (req, res) => {
         await writeHistory(history);
         
         res.json({ success: true, message: 'Đã xóa link thành công' });
-        
     } catch (error) {
         res.status(500).json({ success: false, error: 'Lỗi server' });
     }
@@ -455,7 +487,6 @@ app.post('/api/admin/users', requireAdmin, async (req, res) => {
         const { username, password, email, role } = req.body;
         const admins = await readAdmins();
         
-        // Kiểm tra username đã tồn tại
         if (admins.find(a => a.username === username)) {
             return res.status(400).json({ success: false, error: 'Username đã tồn tại' });
         }
@@ -475,7 +506,6 @@ app.post('/api/admin/users', requireAdmin, async (req, res) => {
         
         const { password: _, ...adminData } = newAdmin;
         res.json({ success: true, user: adminData });
-        
     } catch (error) {
         res.status(500).json({ success: false, error: 'Lỗi server' });
     }
@@ -486,12 +516,10 @@ app.delete('/api/admin/users/:username', requireAdmin, async (req, res) => {
         const { username } = req.params;
         const admins = await readAdmins();
         
-        // Không cho xóa tài khoản cuối cùng
         if (admins.length <= 1) {
             return res.status(400).json({ success: false, error: 'Không thể xóa tài khoản cuối cùng' });
         }
         
-        // Không cho xóa tài khoản của chính mình
         if (username === req.admin.username) {
             return res.status(400).json({ success: false, error: 'Không thể xóa tài khoản của chính mình' });
         }
@@ -500,13 +528,12 @@ app.delete('/api/admin/users/:username', requireAdmin, async (req, res) => {
         await writeAdmins(newAdmins);
         
         res.json({ success: true, message: 'Đã xóa tài khoản' });
-        
     } catch (error) {
         res.status(500).json({ success: false, error: 'Lỗi server' });
     }
 });
 
-// ==================== API PUBLIC (tiếp) ====================
+// ==================== API PUBLIC ====================
 
 // API: Tạo link rút gọn
 app.post('/api/shorten', upload.single('previewImage'), async (req, res) => {
@@ -554,7 +581,7 @@ app.post('/api/shorten', upload.single('previewImage'), async (req, res) => {
                 createdAt: new Date().toISOString(),
                 previewImage: previewImage ? `/uploads/${previewImage.filename}` : null,
                 totalClicks: 0,
-                createdBy: req.ip // Lưu IP người tạo
+                createdBy: req.ip
             };
             
             stats[shortCode] = {
@@ -570,7 +597,6 @@ app.post('/api/shorten', upload.single('previewImage'), async (req, res) => {
             await writeStats(stats);
         }
         
-        // Thêm vào lịch sử
         history.unshift({
             shortCode,
             longUrl,
@@ -593,7 +619,6 @@ app.post('/api/shorten', upload.single('previewImage'), async (req, res) => {
             shortCode,
             previewImage: urls[shortCode].previewImage
         });
-        
     } catch (error) {
         console.error('Lỗi:', error);
         res.status(500).json({ 
@@ -643,7 +668,7 @@ app.get('/api/history', async (req, res) => {
         const history = await readHistory();
         res.json({
             success: true,
-            history: history.slice(0, 50) // Chỉ lấy 50 gần nhất
+            history: history.slice(0, 50)
         });
     } catch (error) {
         res.status(500).json({
@@ -732,7 +757,7 @@ app.get('/:code', async (req, res) => {
 
 // Khởi tạo và chạy server
 initializeDataFiles().then(() => {
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Server đang chạy tại: ${BASE_URL}`);
         console.log(`🔐 Admin login: ${BASE_URL}/admin.html`);
         console.log(`📝 API endpoint: ${BASE_URL}/api/shorten`);
